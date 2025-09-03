@@ -2,9 +2,11 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import authService from '../../services/authService';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { loading } = useAuth();
+
   const location = useLocation();
 
   if (loading) {
@@ -15,11 +17,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authService.isAuthenticated()) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(authService.getUserRole())) {
     return <Navigate to="/unauthorized" replace />;
   }
 

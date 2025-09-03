@@ -11,13 +11,14 @@ import ProtectedRoute from './Pages/Auth/ProtectedRoute';
 import RegisterUserPage from './Pages/Register';
 import RegisterAdminPage from './Pages/Admin/Register';
 import RegisterSuperAdminPage from './Pages/SuperAdmin/Register';
+import SuperAdminDashboard from './Pages/SuperAdmin/Dashboard';
 
 const UnauthorizedPage = () => (
     <div className='flex flex-col items-center justify-center h-screen bg-gray-100'>
         <h1 className='text-4xl font-bold text-red-500'>403 - Akses Ditolak</h1>
         <p className='text-gray-600 mt-2'>Anda tidak memiliki izin untuk melihat halaman ini.</p>
         <Link to="/" className='mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'>
-          Kembali ke Halaman Login
+          Kembali Login
         </Link>
     </div>
 );
@@ -33,8 +34,10 @@ function App() {
         <Route path="/login/admin" element={<LoginAdminPage />} />
         <Route path="/login/superadmin" element={<LoginSuperAdminPage />} />
 
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['user', 'admin', 'superadmin']}><DashboardUser /></ProtectedRoute>} />
-        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student', 'admin', 'super_admin']}><DashboardUser /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/superadmin/dashboard" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
+
         
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="*" element={<div className='flex items-center justify-center h-screen'><h1 className='text-4xl font-bold'>404 - Halaman Tidak Ditemukan</h1></div>} />

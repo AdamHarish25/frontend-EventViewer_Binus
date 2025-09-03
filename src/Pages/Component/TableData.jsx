@@ -26,7 +26,7 @@ const MyEventsTable = ({ events, onEdit, onDelete, onNotify }) => {
         <tbody className="divide-y divide-gray-200">
           {events.map((event) => (
             <tr key={event.id} className="hover:bg-gray-50">
-              <td className="py-4 px-6 text-gray-800 font-medium">{event.name}</td>
+              <td className="py-4 px-6 text-gray-800 font-medium">{event.eventName}</td>
               <td className="py-4 px-6 text-gray-600">{event.date}</td>
               <td className="py-4 px-6 text-gray-600">{event.location}</td>
               <td className="py-4 px-6 text-center">

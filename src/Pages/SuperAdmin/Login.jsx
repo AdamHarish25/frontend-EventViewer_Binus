@@ -48,7 +48,7 @@ const LoginSup = () => {
 
       // Jika tidak ada error, berarti login berhasil
       // Redirect ke dashboard
-      navigate('/admin/dashboard');
+      navigate('/superadmin/dashboard');
 
     } catch (err) {
       // Menangkap error dari backend dan menampilkannya

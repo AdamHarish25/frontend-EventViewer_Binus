@@ -3,11 +3,19 @@ import React, { useState, useEffect } from 'react';
 
 const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
   // State asli untuk data form (tetap utuh)
-  const [formData, setFormData] = useState({ name: '', location: '', date: '', time: '', poster: null });
-  
+  const [formData, setFormData] = useState({
+    eventName: '',
+    location: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    speaker: '',
+    image: null
+  });
+
   // State baru untuk mengontrol visibilitas pratinjau
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
-  
+
   // State baru untuk menyimpan sumber URL gambar pratinjau
   const [previewImageSrc, setPreviewImageSrc] = useState(null);
 
@@ -16,19 +24,20 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
   // useEffect diperbarui untuk mengatur pratinjau gambar juga
   useEffect(() => {
     if (isOpen && isEditMode) {
-      const [datePart, timePart] = (eventToEdit.date || ' - ').split(' - ');
+      // const [datePart, timePart] = (eventToEdit.date || ' - ').split(' - ');
       setFormData({
-        name: eventToEdit.name || '',
+        eventName: eventToEdit.eventName || '',
         location: eventToEdit.location || '',
-        date: datePart || '',
-        time: timePart || '',
-        poster: eventToEdit.posterUrl || null, // Bisa berupa URL yang ada
+        date: eventToEdit.date || '',
+        startTime: eventToEdit.startTime || '',
+        endTime: eventToEdit.endTime || '',
+        speaker: eventToEdit.speaker || '',
+        image: null
       });
-      // Atur gambar pratinjau dari data yang ada saat mode edit
-      setPreviewImageSrc(eventToEdit.posterUrl || null);
+      setPreviewImageSrc(eventToEdit.imageUrl || null);
     } else {
       // Reset semua state saat modal ditutup atau dalam mode 'New Event'
-      setFormData({ name: '', location: '', date: '', time: '', poster: null });
+      setFormData({ eventName: '', location: '', date: '', startTime: '', endTime: '', speaker: '', image: null });
       setPreviewImageSrc(null);
       setIsPreviewVisible(false); // Pastikan pratinjau tersembunyi saat dibuka kembali
     }
@@ -37,10 +46,10 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
-    if (name === 'poster' && files && files[0]) {
+    if (name === 'image' && files && files[0]) {
       const file = files[0];
-      setFormData(prev => ({ ...prev, poster: file })); // Simpan objek File untuk di-upload
-      setPreviewImageSrc(URL.createObjectURL(file)); // Buat URL sementara untuk pratinjau
+      setFormData(prev => ({ ...prev, image: file }));
+      setPreviewImageSrc(URL.createObjectURL(file));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -48,8 +57,16 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // formData.poster akan berisi objek File jika baru, atau URL jika lama
-    onSave(formData); 
+    const fd = new FormData();
+    fd.append('eventName', formData.eventName);
+    fd.append('date', formData.date);
+    fd.append('startTime', formData.startTime);
+    fd.append('endTime', formData.endTime);
+    fd.append('location', formData.location);
+    fd.append('speaker', formData.speaker);
+    if (formData.image) fd.append('image', formData.image);
+    onSave(fd);
+    console.log([...fd.entries()]);
   };
 
   // Fungsi untuk toggle pratinjau
@@ -59,41 +76,57 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
 
   if (!isOpen) return null;
 
+
+  
+
   return (
     // Latar belakang modal
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-      <div className={`m-4 transform rounded-xl bg-white p-2 shadow-2xl transition-all lg:flex ${previewImageSrc ? "max-w-4xl w-full" : "max-w-2xl w-fit"}`}>
-        
+      <div className={`m-4 transform rounded-xl bg-white p-2 shadow-2xl transition-all lg:flex ${previewImageSrc ? "max-w-4xl w-full" : "max-w-2xl w-full"}`}>
+
         {/* Kolom Kiri: Form */}
         <div className="w-full lg:w-1/2 p-6">
           <h2 className="text-2xl font-bold text-gray-800">{isEditMode ? 'Edit Event' : 'New Event'}</h2>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {/* Input fields tetap sama */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-600">Event Name</label>
-              <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
+              <label htmlFor="eventName" className="block text-sm font-medium text-gray-600">Event Name</label>
+              <input type="text" name="eventName" id="eventName" value={formData.eventName} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
             </div>
-            
+
+
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="location" className="block text-sm font-medium text-gray-600">Location</label>
                 <input type="text" name="location" id="location" value={formData.location} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-600">Date</label>
-                  <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
-                </div>
-                <div>
-                  <label htmlFor="time" className="block text-sm font-medium text-gray-600">Time</label>
-                  <input type="time" name="time" id="time" value={formData.time} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
-                </div>
+
+              <div>
+                <label htmlFor="speaker" className="block text-sm font-medium text-gray-600">Speaker</label>
+                <input type="text" name="speaker" id="speaker" value={formData.speaker} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
               </div>
+
             </div>
 
             <div>
-              <label htmlFor="poster" className="block text-sm font-medium text-gray-600">Poster</label>
-              <input type="file" name="poster" id="poster" onChange={handleChange} className="mt-1 w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:py-2 file:px-4 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
+              <label htmlFor="date" className="block text-sm font-medium text-gray-600">Date</label>
+              <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="startTime" className="block text-sm font-medium text-gray-600">Start Time</label>
+                <input type="time" name="startTime" id="startTime" value={formData.startTime} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
+              </div>
+
+              <div>
+                <label htmlFor="endTime" className="block text-sm font-medium text-gray-600">End Time</label>
+                <input type="time" name="endTime" id="endTime" value={formData.endTime} onChange={handleChange} className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500" required />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="image" className="block text-sm font-medium text-gray-600">Poster</label>
+              <input type="file" name="image" id="image" onChange={handleChange} className="mt-1 w-full text-sm file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:py-2 file:px-4 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
             </div>
 
             {/* Tombol Toggle Pratinjau */}
@@ -120,12 +153,12 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
         <div className={`relative w-full items-center justify-center rounded-lg bg-gray-50 lg:w-1/2 p-4 ${isPreviewVisible ? 'flex ' : 'hidden'}`}>
           {isPreviewVisible ? (
             previewImageSrc ? (
-              <img src={previewImageSrc} alt="Poster Preview" className="max-h-[500px] w-auto rounded-md object-contain shadow-md" />
+              <img src={previewImageSrc} alt="image Preview" className="max-h-[500px] w-auto rounded-md object-contain shadow-md" />
             ) : (
-              <div className="text-center text-gray-500">Tidak ada poster untuk ditampilkan. Silakan unggah gambar.</div>
+              <div className="text-center text-gray-500">Tidak ada image untuk ditampilkan. Silakan unggah gambar.</div>
             )
           ) : (
-            <div className="text-center text-gray-500">Pratinjau poster akan muncul di sini.</div>
+            <div className="text-center text-gray-500">Pratinjau image akan muncul di sini.</div>
           )}
         </div>
 

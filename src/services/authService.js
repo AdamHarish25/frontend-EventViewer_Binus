@@ -57,17 +57,44 @@ const logout = async () => {
   }
 };
 
+
 const getCurrentUser = () => {
   const userString = localStorage.getItem('user');
   return userString ? JSON.parse(userString) : null;
 };
 
+// Helper: Cek apakah user sudah login
+const isAuthenticated = () => {
+  return !!getCurrentUser();
+};
+
+// Helper: Ambil role user
+const getUserRole = () => {
+  const user = getCurrentUser();
+  return user?.role || null;
+};
+
+// Helper: Cek apakah user admin
+const isAdmin = () => {
+  return getUserRole() === 'admin';
+};
+
+// Helper: Cek apakah user superadmin
+const isSuperAdmin = () => {
+  return getUserRole() === 'super_admin';
+};
+
+
 
 const authService = {
   login,
-  register, // Pastikan fungsi ini ter-update
+  register,
   logout,
   getCurrentUser,
+  isAuthenticated,
+  getUserRole,
+  isAdmin,
+  isSuperAdmin,
 };
 
 export default authService;
