@@ -18,6 +18,28 @@ const AdminDashboard = () => {
   const [modal, setModal] = useState({ type: null, data: null });
   const [actionToConfirm, setActionToConfirm] = useState(null);
 
+  // Tambahkan di atas
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await apiClient.get('/notifications'); // Pastikan endpoint ini mengembalikan notifikasi untuk user yang login
+      setNotifications(res.data.notifications || []);
+    } catch (err) {
+      setNotifications([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000); // polling tiap 10 detik
+    return () => clearInterval(interval);
+  }, []);
+
+
+  console.log(notifications);
+
+
   // Fetch events from backend
   const fetchEvents = async () => {
     try {
@@ -61,7 +83,7 @@ const AdminDashboard = () => {
   // Edit event (open modal)
   const handleEditEvent = (event) => handleOpenModal('form', event);
 
- // Delete event
+  // Delete event
   const handleDeleteClick = (eventId) => {
     setActionToConfirm(() => async () => {
       try {
@@ -70,7 +92,7 @@ const AdminDashboard = () => {
         handleCloseModal();
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Deleted!', message: 'Event berhasil dihapus.' }), 100);
       } catch (err) {
-        console.error('Error deleting event:', err);  
+        console.error('Error deleting event:', err);
         // Tampilkan error jika gagal
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Error!', message: 'Gagal menghapus event.' }), 100);
       }
@@ -99,7 +121,7 @@ const AdminDashboard = () => {
     handleOpenModal('confirm-save');
   };
 
-  console.log('Filtered Events:', filteredEvents);
+  // console.log('Filtered Events:', filteredEvents);
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -138,11 +160,19 @@ const AdminDashboard = () => {
             events={filteredEvents}
             onEdit={handleEditEvent}
             onDelete={handleDeleteClick}
-            // onNotify={handleNotifyClick} // jika ada fitur feedback
+          // onNotify={handleNotifyClick} // jika ada fitur feedback
           />
         </div>
         <div className="lg:col-span-1">
-          <FeedbackPanel feedbackList={[{ id: 1, title: 'Revisi Protoa-thon', status: 'Revision', message: "Butuh revisi bagian blabla" }, { id: 2, title: 'Perbaikan Bug', status: 'Accepted', message: "Bug pada halaman utama" }]} onFeedbackClick={(e) => {console.log('Feedback clicked:', e); }} />
+          <FeedbackPanel
+            feedbackList={notifications.map(n => ({
+              id: n.id,
+              title: n.notificationType === 'event_approved' ? 'Event Disetujui' : n.notificationType === 'event_rejected' ? 'Event Ditolak' : 'Notifikasi',
+              status: n.notificationType,
+              message: n.feedback || n.payload?.eventName || n.message
+            }))}
+            onFeedbackClick={(e) => { console.log('Feedback clicked:', e); }}
+          />
         </div>
       </main>
       <EventFormModal

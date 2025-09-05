@@ -19,6 +19,9 @@ const SuperAdminDashboard = () => {
   const [modal, setModal] = useState({ type: null, data: null });
   const [actionToConfirm, setActionToConfirm] = useState(null);
 
+  const [statusMessage, setStatusMessage] = useState(null);
+
+
   // Fetch events (pending/revision)
   const fetchEvents = async () => {
     try {
@@ -65,14 +68,24 @@ const SuperAdminDashboard = () => {
 
   // Approve event
   const handleApproveEvent = async (eventId) => {
-    await approveEvent(eventId);
-    await fetchEvents();
+    try {
+      await approveEvent(eventId);
+      setStatusMessage('Event berhasil di-approve dan notifikasi dikirim ke admin.');
+      await fetchEvents();
+    } catch (err) {
+      setStatusMessage('Gagal approve event: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // Reject event
   const handleRejectEvent = async (eventId, feedback) => {
-    await rejectEvent(eventId, feedback);
-    await fetchEvents();
+    try {
+      await rejectEvent(eventId, feedback);
+      setStatusMessage('Event berhasil di-reject dan notifikasi dikirim ke admin.');
+      await fetchEvents();
+    } catch (err) {
+      setStatusMessage('Gagal reject event: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // Kick admin
@@ -169,6 +182,12 @@ const SuperAdminDashboard = () => {
           </button>
         </div>
       </main>
+      {statusMessage && (
+        <StatusModal
+          message={statusMessage}
+          onClose={() => setStatusMessage(null)}
+        />
+      )}
     </div>
   );
 };
