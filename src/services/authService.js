@@ -7,15 +7,14 @@ import apiClient from './api';
  */
 const login = async (email, password) => {
   try {
-    // Endpoint sudah dikonfirmasi: /auth/login
     const response = await apiClient.post('/auth/login', {
       email,
       password,
     });
 
-    // Tanyakan juga nama properti token di response, kita asumsikan 'accessToken'
     if (response.data.accessToken) {
       localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.setItem('accessToken', response.data.accessToken); // <-- Tambahkan ini!
     }
 
     return response.data;
@@ -44,15 +43,12 @@ const register = async (registrationData) => {
  */
 const logout = async () => {
   try {
-    // Panggil endpoint logout di backend (ini akan memvalidasi token yang ada)
     await apiClient.post('/auth/logout');
   } catch (error) {
-    // Abaikan error jika logout gagal (misal, token sudah expired), 
-    // yang penting data di frontend bersih.
     console.error("Logout API call failed, but proceeding with client-side logout.", error);
   } finally {
-    // Selalu hapus data user dari localStorage & redirect
     localStorage.removeItem('user');
+    localStorage.removeItem('accessToken'); // <-- Tambahkan ini!
     window.location.href = '/';
   }
 };

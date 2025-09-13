@@ -18,15 +18,34 @@ const AdminDashboard = () => {
   const [modal, setModal] = useState({ type: null, data: null });
   const [actionToConfirm, setActionToConfirm] = useState(null);
 
-  // Tambahkan di atas
+  // Notifikasi
   const [notifications, setNotifications] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState(null);
 
+  // Fetch notifications
   const fetchNotifications = async () => {
+    setNotifLoading(true);
+    setNotifError(null);
     try {
-      const res = await apiClient.get('/notifications'); // Pastikan endpoint ini mengembalikan notifikasi untuk user yang login
-      setNotifications(res.data.notifications || []);
+      const res = await apiClient.get('/notification');
+      if (Array.isArray(res.data)) {
+        setNotifications(res.data);
+        console.log('Unexpected notifications format:', res.data);
+
+      } else if (Array.isArray(res.data.notifications)) {
+        setNotifications(res.data.notifications);
+        console.log('Unexpected notifications format:', res.data);
+      } else {
+        setNotifications([]);
+        console.log('Unexpected notifications format:', res.data);
+      }
     } catch (err) {
       setNotifications([]);
+      setNotifError('Gagal mengambil notifikasi');
+      console.error('Error fetching notifications:', err);
+    } finally {
+      setNotifLoading(false);
     }
   };
 
@@ -36,20 +55,13 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-
-  console.log(notifications);
-
-
   // Fetch events from backend
   const fetchEvents = async () => {
     try {
       const res = await apiClient.get('/event');
-      // Sesuaikan struktur data jika backend berbeda
-      console.log(res.data);
       setAllEvents(res.data.event || []);
     } catch (err) {
       console.error('Error fetching events:', err);
-      // Handle error (bisa tampilkan pesan)
       setAllEvents([]);
     }
   };
@@ -93,14 +105,11 @@ const AdminDashboard = () => {
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Deleted!', message: 'Event berhasil dihapus.' }), 100);
       } catch (err) {
         console.error('Error deleting event:', err);
-        // Tampilkan error jika gagal
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Error!', message: 'Gagal menghapus event.' }), 100);
       }
     });
     handleOpenModal('confirm-delete');
   };
-
-  // console.log(allEvents);  
 
   // Save event (create or edit)
   const handleSaveEvent = (formData) => {
@@ -121,7 +130,7 @@ const AdminDashboard = () => {
     handleOpenModal('confirm-save');
   };
 
-  // console.log('Filtered Events:', filteredEvents);
+  // console.log("Notifications:", notifications);
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -143,7 +152,7 @@ const AdminDashboard = () => {
                 className="w-full md:w-auto px-4 py-2 border rounded-lg"
               >
                 <option value="All">All Status</option>
-                <option value="Accepted">Accepted</option>
+                <option value="Approved">Approved</option>
                 <option value="Pending">Pending</option>
                 <option value="Revision">Revision</option>
                 <option value="Rejected">Rejected</option>
@@ -160,19 +169,50 @@ const AdminDashboard = () => {
             events={filteredEvents}
             onEdit={handleEditEvent}
             onDelete={handleDeleteClick}
-          // onNotify={handleNotifyClick} // jika ada fitur feedback
           />
         </div>
         <div className="lg:col-span-1">
-          <FeedbackPanel
-            feedbackList={notifications.map(n => ({
-              id: n.id,
-              title: n.notificationType === 'event_approved' ? 'Event Disetujui' : n.notificationType === 'event_rejected' ? 'Event Ditolak' : 'Notifikasi',
-              status: n.notificationType,
-              message: n.feedback || n.payload?.eventName || n.message
-            }))}
-            onFeedbackClick={(e) => { console.log('Feedback clicked:', e); }}
-          />
+          {notifLoading ? (
+            <div className="bg-white p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
+              <span className="text-gray-500">Loading notifications...</span>
+            </div>
+          ) : notifError ? (
+            <div className="bg-white p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
+              <span className="text-red-500">{notifError}</span>
+            </div>
+          ) : (
+            <FeedbackPanel
+              feedbackList={notifications.map(n => {
+                let payload = {};
+                try {
+                  payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload || {};
+                } catch {
+                  payload = {};
+                }
+                const typeToStatus = {
+                  event_revision: 'REVISION',
+                  event_rejected: 'REJECTED',
+                  event_approved: 'APPROVED',
+                  event_created: 'PENDING',
+                };
+                const status = typeToStatus[n.notificationType] || 'PENDING';
+                const title = payload.eventName || 'Event Notification';
+                const message =
+                  n.feedback ||
+                  `Event "${payload.eventName || ''}" by ${payload.speaker || ''} at ${payload.location || ''} on ${payload.date || ''}`;
+
+                
+                return {
+                  id: n.id,
+                  status,
+                  title,
+                  message,
+                  ...n,
+                };
+              })}
+              onFeedbackClick={(e) => { console.log('Feedback clicked:', e); }}
+            />
+          )}
         </div>
       </main>
       <EventFormModal
