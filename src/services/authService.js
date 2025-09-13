@@ -12,9 +12,10 @@ const login = async (email, password) => {
       password,
     });
 
+    // Backend sekarang mengirim lebih banyak data user
     if (response.data.accessToken) {
+      // Simpan seluruh data yang diterima dari backend
       localStorage.setItem('user', JSON.stringify(response.data));
-      localStorage.setItem('accessToken', response.data.accessToken); // <-- Tambahkan ini!
     }
 
     return response.data;
@@ -24,10 +25,8 @@ const login = async (email, password) => {
   }
 };
 
-
 const register = async (registrationData) => {
   try {
-    // Panggil endpoint register dengan data pengguna
     const response = await apiClient.post('/auth/register', registrationData);
     return response.data;
   } catch (error) {
@@ -36,11 +35,6 @@ const register = async (registrationData) => {
   }
 };
 
-
-/**
- * Fungsi untuk logout.
- * Menggunakan endpoint: POST /auth/logout
- */
 const logout = async () => {
   try {
     await apiClient.post('/auth/logout');
@@ -48,44 +42,82 @@ const logout = async () => {
     console.error("Logout API call failed, but proceeding with client-side logout.", error);
   } finally {
     localStorage.removeItem('user');
-    localStorage.removeItem('accessToken'); // <-- Tambahkan ini!
     window.location.href = '/';
   }
 };
 
+// --- TAMBAHAN: FUNGSI UNTUK RESET PASSWORD ---
 
+/**
+ * Meminta OTP untuk reset password.
+ * Menggunakan endpoint: POST /password/forgot-password
+ */
+const forgotPassword = async (email) => {
+  try {
+    const response = await apiClient.post('/password/forgot-password', { email });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+/**
+ * Memverifikasi OTP yang diterima.
+ * Menggunakan endpoint: POST /password/verify-otp
+ */
+const verifyOtp = async (email, otp) => {
+  try {
+    const response = await apiClient.post('/password/verify-otp', { email, otp });
+    return response.data; // Akan mengembalikan resetToken
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+/**
+ * Mengatur ulang password dengan token.
+ * Menggunakan endpoint: POST /password/reset-password
+ */
+const resetPassword = async (email, password, resetToken) => {
+  try {
+    const response = await apiClient.post('/password/reset-password', { email, password, resetToken });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+
+// --- Helper Functions (Tidak ada perubahan) ---
 const getCurrentUser = () => {
   const userString = localStorage.getItem('user');
   return userString ? JSON.parse(userString) : null;
 };
 
-// Helper: Cek apakah user sudah login
 const isAuthenticated = () => {
   return !!getCurrentUser();
 };
 
-// Helper: Ambil role user
 const getUserRole = () => {
   const user = getCurrentUser();
   return user?.role || null;
 };
 
-// Helper: Cek apakah user admin
 const isAdmin = () => {
   return getUserRole() === 'admin';
 };
 
-// Helper: Cek apakah user superadmin
 const isSuperAdmin = () => {
   return getUserRole() === 'super_admin';
 };
-
-
 
 const authService = {
   login,
   register,
   logout,
+  forgotPassword, // <-- Tambahkan
+  verifyOtp,      // <-- Tambahkan
+  resetPassword,  // <-- Tambahkan
   getCurrentUser,
   isAuthenticated,
   getUserRole,
