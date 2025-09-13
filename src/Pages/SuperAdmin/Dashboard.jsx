@@ -1,159 +1,184 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../Auth/AuthContext';
 import MainHeader from '../Component/MainHeader';
-import MyEventsTable from '../Component/TableData';
-import FeedbackPanel from '../Component/FeedbackPanel';
-import EventFormModal from '../Component/EventFormModal';
-import { ConfirmationModal } from '../Component/ConfirmationModal';
 import { StatusModal } from '../Component/StatusModal';
-import { approveEvent, rejectEvent } from '../../services/eventService';
+import { approveEvent, rejectEvent, getEvents, sendFeedback } from '../../services/eventService';
 import apiClient from '../../services/api';
 
 const SuperAdminDashboard = () => {
-  const { user } = useAuth();
   const [allEvents, setAllEvents] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [modal, setModal] = useState({ type: null, data: null });
-  const [actionToConfirm, setActionToConfirm] = useState(null);
 
-  const [statusMessage, setStatusMessage] = useState(null);
+  // State untuk Paginasi
+  const [paginationInfo, setPaginationInfo] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-
-  // Fetch events (pending/revision)
-  const fetchEvents = async () => {
+  // Fetch events dengan paginasi
+  const fetchEvents = async (page = 1) => {
     try {
-      const res = await apiClient.get('/event');
-      setAllEvents((res.data.event || []).filter(e => ['pending', 'revised'].includes(e.status)));
+      const res = await getEvents(page, 10);
+      setAllEvents(res.data.data || []);
+      setPaginationInfo(res.data.pagination);
+      setCurrentPage(res.data.pagination.currentPage);
     } catch (err) {
+      console.error("Error fetching events:", err);
       setAllEvents([]);
+      setPaginationInfo(null);
     }
   };
 
-  // Fetch admins
+  // PENTING: Endpoint `/users/admins` harus dibuat di backend agar ini berfungsi
   const fetchAdmins = async () => {
     try {
-      const res = await apiClient.get('/users');
+      const res = await apiClient.get('/users/admins'); // Endpoint ini perlu dibuat
       setAdmins((res.data.users || []).filter(u => u.role === 'admin'));
     } catch (err) {
+      console.error("Gagal mengambil data admin. Pastikan endpoint GET /users/admins sudah ada di backend.");
       setAdmins([]);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(currentPage);
     fetchAdmins();
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     let processed = [...allEvents];
     if (statusFilter !== 'All') {
-      processed = processed.filter(e => (e.status.toLowerCase() === statusFilter.toLowerCase()));
+      processed = processed.filter(e => e.status.toLowerCase() === statusFilter.toLowerCase());
     }
     if (searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase();
-      processed = processed.filter(e => (
-        (e.eventName && e.eventName.toLowerCase().includes(term)) ||
-        (e.location && e.location.toLowerCase().includes(term)) ||
-        (e.date && e.date.toLowerCase().includes(term)) ||
-        (e.startTime && e.startTime.toLowerCase().includes(term)) ||
-        (e.endTime && e.endTime.toLowerCase().includes(term)) ||
-        (e.speaker && e.speaker.toLowerCase().includes(term))
-      ));
+      processed = processed.filter(e => (e.eventName && e.eventName.toLowerCase().includes(term)));
     }
     setFilteredEvents(processed);
   }, [searchTerm, statusFilter, allEvents]);
-
-  // Approve event
-  const handleApproveEvent = async (eventId) => {
-    try {
-      await approveEvent(eventId);
-      setStatusMessage('Event berhasil di-approve dan notifikasi dikirim ke admin.');
-      await fetchEvents();
-    } catch (err) {
-      setStatusMessage('Gagal approve event: ' + (err.message || 'Unknown error'));
+  
+  const handlePageChange = (newPage) => {
+    if (paginationInfo && newPage > 0 && newPage <= paginationInfo.totalPages) {
+      setCurrentPage(newPage);
     }
   };
 
-  // Reject event
-  const handleRejectEvent = async (eventId, feedback) => {
+  const handleAction = async (action, successMessage, errorMessage) => {
     try {
-      await rejectEvent(eventId, feedback);
-      setStatusMessage('Event berhasil di-reject dan notifikasi dikirim ke admin.');
-      await fetchEvents();
+      await action();
+      setModal({ type: 'status', data: { variant: 'success', title: 'Success!', message: successMessage } });
+      fetchEvents(currentPage); // Re-fetch
     } catch (err) {
-      setStatusMessage('Gagal reject event: ' + (err.message || 'Unknown error'));
+      setModal({ type: 'status', data: { variant: 'danger', title: 'Error!', message: err.message || errorMessage } });
     }
   };
 
-  // Kick admin
-  const handleKickAdmin = async (userId) => {
-    await apiClient.delete(`/users/${userId}`);
-    await fetchAdmins();
+  const handleApprove = (eventId) => handleAction(
+    () => approveEvent(eventId),
+    'Event berhasil disetujui.',
+    'Gagal menyetujui event.'
+  );
+
+  const handleReject = (eventId) => {
+    const feedback = prompt('Harap berikan alasan penolakan:');
+    if (feedback) {
+      handleAction(
+        () => rejectEvent(eventId, feedback),
+        'Event berhasil ditolak.',
+        'Gagal menolak event.'
+      );
+    }
+  };
+  
+  const handleFeedback = (eventId) => {
+    const feedback = prompt('Harap berikan catatan untuk revisi:');
+    if (feedback) {
+      handleAction(
+        () => sendFeedback(eventId, feedback),
+        'Feedback revisi berhasil dikirim.',
+        'Gagal mengirim feedback.'
+      );
+    }
   };
 
-  // Hire admin
-  const handleHireAdmin = async (adminData) => {
-    await apiClient.post('/auth/register', { ...adminData, role: 'admin' });
-    await fetchAdmins();
-  };
+  const handleHireAdmin = (adminData) => {
+    // Implementasi logika hire admin jika diperlukan
+    console.log("Hiring admin:", adminData);
+  }
+  
+  const handleKickAdmin = (adminId) => {
+    // Implementasi logika kick admin jika diperlukan
+    console.log("Kicking admin:", adminId);
+  }
 
   return (
     <div className="bg-gray-100 min-h-screen">
       <MainHeader pageTitle="SUPER ADMIN" />
       <main className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Approval Events */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Approval Events</h2>
-          <input
-            type="text"
-            placeholder="Search events..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full mb-4 px-4 py-2 border rounded-lg"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="mb-4 px-4 py-2 border rounded-lg"
-          >
-            <option value="All">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Revised">Revised</option>
-          </select>
-          <table className="w-full">
-            <thead>
+          <h2 className="text-xl font-bold mb-4">Event Approval</h2>
+          <div className="flex justify-between mb-4">
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-1/2 px-4 py-2 border rounded-lg"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border rounded-lg"
+            >
+              <option value="All">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="revised">Revised</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50">
               <tr>
-                <th>Event Name</th>
+                <th className="p-2">Event Name</th>
                 <th>Location</th>
                 <th>Date</th>
-                <th>Speaker</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredEvents.map(event => (
                 <tr key={event.id}>
-                  <td>{event.eventName}</td>
+                  <td className="p-2">{event.eventName}</td>
                   <td>{event.location}</td>
                   <td>{event.date}</td>
-                  <td>{event.speaker}</td>
-                  <td>{event.status}</td>
-                  <td>
-                    <button onClick={() => handleApproveEvent(event.id)} className="bg-green-500 text-white px-2 py-1 rounded mr-2">Approve</button>
-                    <button onClick={() => handleRejectEvent(event.id, prompt('Alasan penolakan?'))} className="bg-red-500 text-white px-2 py-1 rounded">Reject</button>
+                  <td><span className={`px-2 py-1 rounded-full text-xs font-semibold ${event.status === 'approved' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{event.status}</span></td>
+                  <td className="flex gap-2">
+                    <button onClick={() => handleApprove(event.id)} className="text-green-500 font-bold">Approve</button>
+                    <button onClick={() => handleReject(event.id)} className="text-red-500 font-bold">Reject</button>
+                    <button onClick={() => handleFeedback(event.id)} className="text-blue-500 font-bold">Revise</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {paginationInfo && paginationInfo.totalPages > 1 && (
+            <div className="mt-4 flex justify-center items-center gap-2">
+              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">
+                Prev
+              </button>
+              <span>Page {paginationInfo.currentPage} of {paginationInfo.totalPages}</span>
+              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === paginationInfo.totalPages} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">
+                Next
+              </button>
+            </div>
+          )}
         </div>
-        {/* Manajemen Admin */}
+        
         <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Manajemen Admin</h2>
+          <h2 className="text-xl font-bold mb-4">Admin Management</h2>
           <table className="w-full">
             <thead>
               <tr>
@@ -182,12 +207,13 @@ const SuperAdminDashboard = () => {
           </button>
         </div>
       </main>
-      {statusMessage && (
-        <StatusModal
-          message={statusMessage}
-          onClose={() => setStatusMessage(null)}
-        />
-      )}
+      <StatusModal
+        isOpen={modal.type === 'status'}
+        onClose={() => setModal({ type: null, data: null })}
+        title={modal.data?.title}
+        message={modal.data?.message}
+        variant={modal.data?.variant}
+      />
     </div>
   );
 };

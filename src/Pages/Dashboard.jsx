@@ -13,10 +13,10 @@ import "./Component/background.css";
 import { FaLocationPin } from "react-icons/fa6";
 import RealtimeClock from "./Component/realtime";
 import MainHeader from "./Component/MainHeader";
-import apiClient from "../services/api"; // 1. Impor apiClient
+import apiClient from "../services/api";
 
 const DashboardUser = () => {
-  // 2. State baru untuk menampung data per kategori dari API
+  // State untuk menampung data per kategori dari API
   const [currentEvents, setCurrentEvents] = useState([]);
   const [thisWeekEvents, setThisWeekEvents] = useState([]);
   const [nextEvents, setNextEvents] = useState([]);
@@ -35,23 +35,20 @@ const DashboardUser = () => {
     });
   };
 
-  // 3. Fetch data event dari API backend Anda
+  // Fetch data event dari API backend Anda
   useEffect(() => {
     const fetchCategorizedEvents = async () => {
       setLoading(true);
       try {
-        // Panggil endpoint yang benar untuk user
         const response = await apiClient.get('/users/event/');
         const { current, thisWeek, next } = response.data.event;
         
-        // Simpan data ke state masing-masing
         setCurrentEvents(current || []);
         setThisWeekEvents(thisWeek || []);
         setNextEvents(next || []);
         
       } catch (err) {
         console.error("Error fetching categorized events:", err);
-        // Kosongkan state jika terjadi error
         setCurrentEvents([]);
         setThisWeekEvents([]);
         setNextEvents([]);
@@ -63,12 +60,11 @@ const DashboardUser = () => {
     fetchCategorizedEvents();
   }, []);
 
-  // 4. Logika filter untuk "This Week Events"
+  // Logika filter untuk "This Week Events"
   useEffect(() => {
     const searchTermLower = searchItem.toLowerCase();
     const results = thisWeekEvents.filter((event) => {
       if (!searchTermLower) return true;
-      // Gunakan properti dari API: eventName, location, speaker
       return `${event.eventName} ${event.location} ${event.speaker}`
         .toLowerCase()
         .includes(searchTermLower);
@@ -82,8 +78,8 @@ const DashboardUser = () => {
     title: event.eventName,
     location: event.location,
     speaker: event.speaker,
-    date: event.date,
-    time: `${event.startTime} - ${event.endTime}`,
+    date: new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'}),
+    time: `${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`,
     image: event.imageUrl 
   }));
 
@@ -97,7 +93,6 @@ const DashboardUser = () => {
           <RealtimeClock />
         </div>
         <div className="grid gap-2 w-full place-items-center">
-          {/* 5. Gunakan data `currentEvents` yang sudah di-map untuk carousel */}
           <EventCarousel carouselData={carouselData} />
         </div>
       </div>
@@ -115,17 +110,16 @@ const DashboardUser = () => {
             {loading ? (
               <p>Loading...</p>
             ) : filteredThisWeek.length > 0 ? (
-              // 6. Tampilkan event "This Week" dari state `filteredThisWeek`
               filteredThisWeek.map((event, index) => (
                 <li key={event.id} className={`p-4 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"} flex items-center justify-between`}>
                   <div>
                     <p className="font-semibold text-lg">{event.eventName}</p>
                     <div className="flex items-center text-sm text-gray-600 space-x-3 mt-1">
                       <span className="flex items-center">
-                        <FaRegCalendarAlt className="mr-1" /> {new Date(event.date).toLocaleDateString()}
+                        <FaRegCalendarAlt className="mr-1" /> {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'})}
                       </span>
                       <span className="flex items-center">
-                        <FaRegClock className="mr-1" /> {`${event.startTime} - ${event.endTime}`}
+                        <FaRegClock className="mr-1" /> {`${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`}
                       </span>
                       <span className="flex items-center">
                         <FaMapMarkerAlt className="mr-1 text-red-500" />{" "}
@@ -149,7 +143,6 @@ const DashboardUser = () => {
 
           <h1 className="text-2xl font-semibold mt-10 mb-5">Next Events</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-            {/* 7. Tampilkan event "Next Events" dari state `nextEvents` */}
             {nextEvents.slice(0, 4).map((event) => (
               <div
                 key={event.id + "-next"}
@@ -159,11 +152,11 @@ const DashboardUser = () => {
                 <div>
                   <p className="space-x-2 flex items-center">
                     <FaClock className="text-[#EC6A37]"/>
-                    <span>{`${event.startTime} - ${event.endTime}`}</span>
+                    <span>{`${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`}</span>
                   </p>
                   <p className="space-x-2 flex items-center">
                     <FaCalendar className="text-[#3F88BC]"/>
-                    <span>{new Date(event.date).toLocaleDateString()}</span>
+                    <span>{new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'})}</span>
                   </p>
                   <p className="space-x-2 flex items-center">
                     <FaLocationPin className="text-[#D9242A]"/>
@@ -176,7 +169,7 @@ const DashboardUser = () => {
         </div>
       </div>
       <div className="w-full h-fit px-10 py-5 bg-[#F3F3F3] text-right">
-        <p className="text-gray-600">Universitas Bina Nusantara Bekasi 2023</p>
+        <p className="text-gray-600">Universitas Bina Nusantara Bekasi 2025</p>
       </div>
     </div>
   );

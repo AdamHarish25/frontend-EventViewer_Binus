@@ -6,7 +6,7 @@ import FeedbackPanel from '../Component/FeedbackPanel';
 import EventFormModal from '../Component/EventFormModal';
 import { ConfirmationModal } from '../Component/ConfirmationModal';
 import { StatusModal } from '../Component/StatusModal';
-import { createEvent, editEvent, deleteEvent } from '../../services/eventService';
+import { createEvent, editEvent, deleteEvent, getEvents } from '../../services/eventService';
 import apiClient from '../../services/api';
 
 const AdminDashboard = () => {
@@ -17,29 +17,21 @@ const AdminDashboard = () => {
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [modal, setModal] = useState({ type: null, data: null });
   const [actionToConfirm, setActionToConfirm] = useState(null);
-
-  // Notifikasi
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState(null);
+
+  // State untuk Paginasi
+  const [paginationInfo, setPaginationInfo] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch notifications
   const fetchNotifications = async () => {
     setNotifLoading(true);
     setNotifError(null);
     try {
-      const res = await apiClient.get('/notification');
-      if (Array.isArray(res.data)) {
-        setNotifications(res.data);
-        console.log('Unexpected notifications format:', res.data);
-
-      } else if (Array.isArray(res.data.data)) {
-        setNotifications(res.data.data);
-        console.log('Unexpected notifications format:', res.data);
-      } else {
-        setNotifications([]);
-        console.log('Unexpected notifications format:', res.data);
-      }
+      const res = await apiClient.get('/notification'); // Endpoint yang benar
+      setNotifications(res.data.data || []); // Akses properti 'data'
     } catch (err) {
       setNotifications([]);
       setNotifError('Gagal mengambil notifikasi');
@@ -51,25 +43,29 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // polling tiap 10 detik
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch events from backend
-  const fetchEvents = async () => {
+  // Fetch events dari backend dengan paginasi
+  const fetchEvents = async (page = 1) => {
     try {
-      const res = await apiClient.get('/event');
-      setAllEvents(res.data.event || []);
+      const res = await getEvents(page); // Memanggil service dengan nomor halaman
+      setAllEvents(res.data.data || []);
+      setPaginationInfo(res.data.pagination);
+      setCurrentPage(res.data.pagination.currentPage);
     } catch (err) {
       console.error('Error fetching events:', err);
       setAllEvents([]);
+      setPaginationInfo(null);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    fetchEvents(currentPage);
+  }, [currentPage]);
 
+  // Filtering (diterapkan pada data halaman saat ini)
   useEffect(() => {
     let processed = [...allEvents];
     if (statusFilter !== 'All') {
@@ -89,29 +85,32 @@ const AdminDashboard = () => {
     setFilteredEvents(processed);
   }, [searchTerm, statusFilter, allEvents]);
 
+  const handlePageChange = (newPage) => {
+    if (paginationInfo && newPage > 0 && newPage <= paginationInfo.totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+  
   const handleOpenModal = (type, data = null) => setModal({ type, data });
   const handleCloseModal = () => setModal({ type: null, data: null });
 
-  // Edit event (open modal)
   const handleEditEvent = (event) => handleOpenModal('form', event);
 
-  // Delete event
   const handleDeleteClick = (eventId) => {
     setActionToConfirm(() => async () => {
       try {
         await deleteEvent(eventId);
-        await fetchEvents();
+        await fetchEvents(currentPage);
         handleCloseModal();
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Deleted!', message: 'Event berhasil dihapus.' }), 100);
       } catch (err) {
-        console.error('Error deleting event:', err);
+        handleCloseModal();
         setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Error!', message: 'Gagal menghapus event.' }), 100);
       }
     });
     handleOpenModal('confirm-delete');
   };
 
-  // Save event (create or edit)
   const handleSaveEvent = (formData) => {
     setActionToConfirm(() => async () => {
       try {
@@ -120,17 +119,16 @@ const AdminDashboard = () => {
         } else {
           await createEvent(formData);
         }
-        await fetchEvents();
+        await fetchEvents(currentPage);
         handleCloseModal();
         setTimeout(() => handleOpenModal('status', { variant: 'success', title: 'Success!', message: 'Event berhasil disimpan.' }), 100);
       } catch (err) {
-        console.error('Error saving event:', err);
+        handleCloseModal();
+        setTimeout(() => handleOpenModal('status', { variant: 'danger', title: 'Error!', message: 'Gagal menyimpan event.' }), 100);
       }
     });
     handleOpenModal('confirm-save');
   };
-
-  // console.log("Notifications:", notifications);
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -152,10 +150,10 @@ const AdminDashboard = () => {
                 className="w-full md:w-auto px-4 py-2 border rounded-lg"
               >
                 <option value="All">All Status</option>
-                <option value="Approved">Approved</option>
-                <option value="Pending">Pending</option>
-                <option value="Revision">Revision</option>
-                <option value="Rejected">Rejected</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="revised">Revised</option>
+                <option value="rejected">Rejected</option>
               </select>
               <button
                 onClick={() => handleOpenModal('form')}
@@ -170,49 +168,20 @@ const AdminDashboard = () => {
             onEdit={handleEditEvent}
             onDelete={handleDeleteClick}
           />
+          {paginationInfo && paginationInfo.totalPages > 1 && (
+            <div className="mt-4 flex justify-center items-center gap-2">
+              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">
+                Prev
+              </button>
+              <span>Page {paginationInfo.currentPage} of {paginationInfo.totalPages}</span>
+              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === paginationInfo.totalPages} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">
+                Next
+              </button>
+            </div>
+          )}
         </div>
         <div className="lg:col-span-1">
-          {notifLoading ? (
-            <div className="bg-white p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
-              <span className="text-gray-500">Loading notifications...</span>
-            </div>
-          ) : notifError ? (
-            <div className="bg-white p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
-              <span className="text-red-500">{notifError}</span>
-            </div>
-          ) : (
-            <FeedbackPanel
-              feedbackList={notifications.map(n => {
-                let payload = {};
-                try {
-                  payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload || {};
-                } catch {
-                  payload = {};
-                }
-                const typeToStatus = {
-                  event_revision: 'REVISION',
-                  event_rejected: 'REJECTED',
-                  event_approved: 'APPROVED',
-                  event_created: 'PENDING',
-                };
-                const status = typeToStatus[n.notificationType] || 'PENDING';
-                const title = payload.eventName || 'Event Notification';
-                const message =
-                  n.feedback ||
-                  `Event "${payload.eventName || ''}" by ${payload.speaker || ''} at ${payload.location || ''} on ${payload.date || ''}`;
-
-                
-                return {
-                  id: n.id,
-                  status,
-                  title,
-                  message,
-                  ...n,
-                };
-              })}
-              onFeedbackClick={(e) => { console.log('Feedback clicked:', e); }}
-            />
-          )}
+          <FeedbackPanel feedbackList={notifications} onFeedbackClick={(e) => console.log('Feedback clicked:', e)} />
         </div>
       </main>
       <EventFormModal
@@ -226,7 +195,7 @@ const AdminDashboard = () => {
         onClose={handleCloseModal}
         onConfirm={actionToConfirm}
         title="Attention!"
-        message="Are you sure?"
+        message="Are you sure you want to save this event?"
         variant="success"
       />
       <ConfirmationModal
