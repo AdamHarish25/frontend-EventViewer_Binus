@@ -23,7 +23,6 @@ const DashboardUser = () => {
 
   // State untuk fungsionalitas UI
   const [searchItem, setSearchItem] = useState("");
-  // const [topFilterCategory, setTopFilterCategory] = useState(""); // Filter untuk "This Week"
   const [filteredThisWeek, setFilteredThisWeek] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookmarkedEvents, setBookmarkedEvents] = useState(new Set());
@@ -41,10 +40,9 @@ const DashboardUser = () => {
     const fetchCategorizedEvents = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get('/users/event/'); // Panggil endpoint yang benar
+        // Panggil endpoint yang benar untuk user
+        const response = await apiClient.get('/users/event/');
         const { current, thisWeek, next } = response.data.event;
-
-        console.log("Fetched categorized events:", { current, thisWeek, next });
         
         // Simpan data ke state masing-masing
         setCurrentEvents(current || []);
@@ -79,8 +77,7 @@ const DashboardUser = () => {
   }, [searchItem, thisWeekEvents]);
 
 
-
-  // Mapping data untuk EventCarousel
+  // Mapping data untuk EventCarousel agar sesuai
   const carouselData = currentEvents.map(event => ({
     title: event.eventName,
     location: event.location,
@@ -111,7 +108,6 @@ const DashboardUser = () => {
             <h1 className="text-2xl font-semibold">This Week</h1>
             <div className="flex items-center gap-4">
               <SearchBar searchTerm={searchItem} onSearch={setSearchItem} />
-              {/* Filter category bisa disesuaikan nanti jika diperlukan */}
             </div>
           </div>
 

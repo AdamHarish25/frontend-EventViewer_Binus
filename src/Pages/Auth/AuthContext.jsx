@@ -1,12 +1,8 @@
 // src/Pages/Auth/AuthContext.jsx
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// ==========================================================
-// INI PERBAIKANNYA: Jalur import yang benar
-// `../../` untuk naik dua level (dari Auth -> ke Pages -> ke src)
-// ==========================================================
-import { mockUsers } from '../data/mockdata'; 
+import authService from '../../services/authService'; // 1. Impor authService
 
 export const AuthContext = createContext(null);
 
@@ -16,41 +12,35 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('binus-event-user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error("Gagal memuat sesi dari localStorage", error);
-      localStorage.removeItem('binus-event-user');
-    } finally {
-      setLoading(false);
+    // Cek user dari localStorage saat aplikasi pertama kali dimuat
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
     }
+    setLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    // Fungsi ini sekarang akan bekerja karena `mockUsers` tidak lagi undefined
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-    if (foundUser) {
-      const { password, ...userToStore } = foundUser;
-      setUser(userToStore);
-      localStorage.setItem('binus-event-user', JSON.stringify(userToStore));
-      
-      if (userToStore.role === 'admin' || userToStore.role === 'superadmin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
-      return { success: true };
+  // 2. Ganti fungsi login ini
+  const login = async (email, password) => {
+    // Panggil fungsi login dari authService yang asli
+    const userData = await authService.login(email, password);
+    setUser(userData); // Simpan data user (termasuk token dan role) ke state
+    
+    // Arahkan berdasarkan role setelah login berhasil
+    if (userData.role === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (userData.role === 'super_admin') {
+      navigate('/superadmin/dashboard');
+    } else {
+      navigate('/dashboard');
     }
-    return { success: false, message: 'Email atau password salah.' };
+    return userData; // Kembalikan data user
   };
 
   const logout = () => {
+    authService.logout(); // Panggil fungsi logout dari service
     setUser(null);
-    localStorage.removeItem('binus-event-user');
-    navigate('/');
+    navigate('/'); // Arahkan ke halaman utama setelah logout
   };
 
   const value = { user, login, logout, isAuthenticated: !!user, loading };

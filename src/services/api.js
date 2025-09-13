@@ -1,9 +1,6 @@
 // src/services/api.js
 import axios from 'axios';
 
-// Tanyakan pada rekan Anda, apakah ada base path seperti '/api'?
-// Jika endpointnya adalah http://localhost:5000/auth/login, maka ini sudah benar.
-// Jika endpointnya adalah http://localhost:5000/api/auth/login, ganti baseURL menjadi 'http://localhost:5000/api'
 const API_URL = 'http://localhost:5000'; 
 
 const apiClient = axios.create({

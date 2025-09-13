@@ -33,8 +33,8 @@ const AdminDashboard = () => {
         setNotifications(res.data);
         console.log('Unexpected notifications format:', res.data);
 
-      } else if (Array.isArray(res.data.notifications)) {
-        setNotifications(res.data.notifications);
+      } else if (Array.isArray(res.data.data)) {
+        setNotifications(res.data.data);
         console.log('Unexpected notifications format:', res.data);
       } else {
         setNotifications([]);
