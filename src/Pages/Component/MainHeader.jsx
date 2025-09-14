@@ -9,7 +9,7 @@ const MainHeader = ({ pageTitle }) => {
 
   const user = getCurrentUser();
 
-  console.log(user);
+  console.log("User" , user);
 
   return (
     <div className="w-full h-fit px-10 py-5 bg-white grid grid-cols-3 gap-6 shadow-md items-center">
@@ -26,7 +26,7 @@ const MainHeader = ({ pageTitle }) => {
 
       <div className="flex items-center justify-end gap-5">
         <div className="text-right">
-          <h1 className="text-lg font-semibold">{user?.email}</h1>
+          <h1 className="text-lg font-semibold text-black">{user?.email}</h1>
           <p className="text-sm text-gray-500 capitalize">{user?.role}</p>
           
         </div>

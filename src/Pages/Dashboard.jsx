@@ -36,8 +36,8 @@ const DashboardUser = () => {
     const fetchCategorizedEvents = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get('/users/event/');
-        const { current, thisWeek, next } = response.data.event;
+        const response = await apiClient.get('/event/');
+        const { current, thisWeek, next } = response.data.data;
         
         setCurrentEvents(current || []);
         setThisWeekEvents(thisWeek || []);
