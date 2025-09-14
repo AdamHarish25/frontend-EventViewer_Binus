@@ -16,13 +16,14 @@ function EventCard({ event }) {
   );
 }
 
+const ITEMS_PER_PAGE = 4;
 
-
-const ITEMS_PER_PAGE = 4; // 2x2 grid
-
-export default function EventCarousel({carouselData}) {
+// --- PERBAIKAN: Gunakan prop `carouselData` ---
+export default function EventCarousel({ carouselData }) { 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const totalSlides = Math.ceil(carouselData.length / ITEMS_PER_PAGE);
+  
+  // Pastikan carouselData adalah array sebelum menghitung totalSlides
+  const totalSlides = Array.isArray(carouselData) ? Math.ceil(carouselData.length / ITEMS_PER_PAGE) : 0;
 
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % totalSlides);
@@ -32,9 +33,13 @@ export default function EventCarousel({carouselData}) {
     setCurrentIndex((prevIndex) => (prevIndex - 1 + totalSlides) % totalSlides);
   };
 
+  // Jangan render jika tidak ada data atau totalSlides 0
+  if (!Array.isArray(carouselData) || carouselData.length === 0) {
+    return <div className="text-center text-white py-10">No current events available.</div>;
+  }
+
   return (
     <div className="relative w-full max-w-full px-20 py-10">
-      {/* Grid Container */}
       <div className="overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 grid-rows-1 lg:grid-rows-2 gap-8">
           {carouselData
@@ -48,20 +53,22 @@ export default function EventCarousel({carouselData}) {
         </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <button
-        onClick={prevSlide}
-        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow-md hover:bg-gray-200 transition"
-      >
-        <ChevronLeft size={24} />
-      </button>
-      <button
-        onClick={nextSlide}
-        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow-md hover:bg-gray-200 transition"
-      >
-        <ChevronRight size={24} />
-      </button>
+      {totalSlides > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow-md hover:bg-gray-200 transition"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-full shadow-md hover:bg-gray-200 transition"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </>
+      )}
     </div>
   );
 }
-

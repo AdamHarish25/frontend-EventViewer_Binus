@@ -16,14 +16,11 @@ import MainHeader from "./Component/MainHeader";
 import apiClient from "../services/api";
 
 const DashboardUser = () => {
-  // State untuk menampung data per kategori dari API
   const [currentEvents, setCurrentEvents] = useState([]);
   const [thisWeekEvents, setThisWeekEvents] = useState([]);
   const [nextEvents, setNextEvents] = useState([]);
-
-  // State untuk fungsionalitas UI
   const [searchItem, setSearchItem] = useState("");
-  const [filteredThisWeek, setFilteredThisWeek] = useState([]);
+  const [filteredThisWeek, setFilteredThisWeek] = useState([]); // State terpisah untuk hasil filter
   const [loading, setLoading] = useState(true);
   const [bookmarkedEvents, setBookmarkedEvents] = useState(new Set());
 
@@ -35,7 +32,6 @@ const DashboardUser = () => {
     });
   };
 
-  // Fetch data event dari API backend Anda
   useEffect(() => {
     const fetchCategorizedEvents = async () => {
       setLoading(true);
@@ -60,26 +56,31 @@ const DashboardUser = () => {
     fetchCategorizedEvents();
   }, []);
 
-  // Logika filter untuk "This Week Events"
+  // --- PERBAIKAN LOGIKA FILTER ---
+  // Gunakan useEffect untuk memfilter `thisWeekEvents` setiap kali searchItem atau data asli berubah
   useEffect(() => {
+    if (!searchItem) {
+      setFilteredThisWeek(thisWeekEvents); // Jika tidak ada pencarian, tampilkan semua event minggu ini
+      return;
+    }
+    
     const searchTermLower = searchItem.toLowerCase();
     const results = thisWeekEvents.filter((event) => {
-      if (!searchTermLower) return true;
+      // Logika pencarian Anda sudah benar
       return `${event.eventName} ${event.location} ${event.speaker}`
         .toLowerCase()
         .includes(searchTermLower);
     });
     setFilteredThisWeek(results);
-  }, [searchItem, thisWeekEvents]);
+  }, [searchItem, thisWeekEvents]); // Dijalankan saat searchItem atau thisWeekEvents berubah
 
-
-  // Mapping data untuk EventCarousel agar sesuai
+  // Mapping data untuk EventCarousel
   const carouselData = currentEvents.map(event => ({
     title: event.eventName,
     location: event.location,
     speaker: event.speaker,
-    date: new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'}),
-    time: `${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`,
+    date: event.date,
+    time: `${event.startTime} - ${event.endTime}`,
     image: event.imageUrl 
   }));
 
@@ -93,6 +94,7 @@ const DashboardUser = () => {
           <RealtimeClock />
         </div>
         <div className="grid gap-2 w-full place-items-center">
+          {/* Pastikan carouselData diteruskan dengan benar */}
           <EventCarousel carouselData={carouselData} />
         </div>
       </div>
@@ -110,16 +112,17 @@ const DashboardUser = () => {
             {loading ? (
               <p>Loading...</p>
             ) : filteredThisWeek.length > 0 ? (
+              // Gunakan state filteredThisWeek untuk me-render
               filteredThisWeek.map((event, index) => (
                 <li key={event.id} className={`p-4 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"} flex items-center justify-between`}>
                   <div>
                     <p className="font-semibold text-lg">{event.eventName}</p>
                     <div className="flex items-center text-sm text-gray-600 space-x-3 mt-1">
                       <span className="flex items-center">
-                        <FaRegCalendarAlt className="mr-1" /> {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'})}
+                        <FaRegCalendarAlt className="mr-1" /> {new Date(event.date).toLocaleDateString()}
                       </span>
                       <span className="flex items-center">
-                        <FaRegClock className="mr-1" /> {`${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`}
+                        <FaRegClock className="mr-1" /> {`${event.startTime} - ${event.endTime}`}
                       </span>
                       <span className="flex items-center">
                         <FaMapMarkerAlt className="mr-1 text-red-500" />{" "}
@@ -152,11 +155,11 @@ const DashboardUser = () => {
                 <div>
                   <p className="space-x-2 flex items-center">
                     <FaClock className="text-[#EC6A37]"/>
-                    <span>{`${event.startTime.slice(0, 5)} - ${event.endTime.slice(0, 5)}`}</span>
+                    <span>{`${event.startTime} - ${event.endTime}`}</span>
                   </p>
                   <p className="space-x-2 flex items-center">
                     <FaCalendar className="text-[#3F88BC]"/>
-                    <span>{new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric'})}</span>
+                    <span>{new Date(event.date).toLocaleDateString()}</span>
                   </p>
                   <p className="space-x-2 flex items-center">
                     <FaLocationPin className="text-[#D9242A]"/>
@@ -169,7 +172,7 @@ const DashboardUser = () => {
         </div>
       </div>
       <div className="w-full h-fit px-10 py-5 bg-[#F3F3F3] text-right">
-        <p className="text-gray-600">Universitas Bina Nusantara Bekasi 2025</p>
+        <p className="text-gray-600">Universitas Bina Nusantara Bekasi 2023</p>
       </div>
     </div>
   );
