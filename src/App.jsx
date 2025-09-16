@@ -1,6 +1,6 @@
 // src/App.jsx
 import './index.css';
-import { Route, Routes, Link } from 'react-router-dom';
+import { Route, Routes, Link, redirect, Navigate } from 'react-router-dom';
 
 import LoginUserPage from './Pages/Login';
 import LoginAdminPage from './Pages/Admin/Login';
@@ -31,11 +31,15 @@ function App() {
         <Route path='/register/admin' element={<RegisterAdminPage />} />
         <Route path='/register/superadmin' element={<RegisterSuperAdminPage />} />
         <Route path="/" element={<LoginUserPage />} />
+
+        <Route path="/admin" element={<Navigate to="/login/admin" />} />
+        <Route path="/superadmin" element={<Navigate to="/login/superadmin" />} />
+        
         <Route path="/login" element={<LoginUserPage />} />
         <Route path="/login/admin" element={<LoginAdminPage />} />
         <Route path="/login/superadmin" element={<LoginSuperAdminPage />} />
 
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student', 'admin', 'super_admin']}><DashboardUser /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><DashboardUser /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/superadmin/dashboard" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
 
