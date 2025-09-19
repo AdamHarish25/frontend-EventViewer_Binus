@@ -43,12 +43,27 @@ const SuperAdminDashboard = () => {
     try {
       const res = await apiClient.get('/notification');
       const list = res.data?.data || [];
+      // Debug: lihat tipe-tipe apa saja yang datang
+      console.debug('Admin registration notifications raw:', list.map(n => ({ type: n.notificationType, payload: n.payload })));
+      // Hanya tampilkan notifikasi yang masih dalam 28 hari terakhir (jika field waktu tersedia)
+      const now = Date.now();
+      const fourWeeksMs = 28 * 24 * 60 * 60 * 1000;
+      const isWithinWindow = (n) => {
+        const createdAtStr = n.createdAt || n.created_at || n.timestamp || n.createdAtUtc || n.created_at_utc;
+        if (!createdAtStr) return true; // jika tidak ada field waktu, jangan disaring
+        const t = Date.parse(createdAtStr);
+        if (Number.isNaN(t)) return true;
+        return (now - t) <= fourWeeksMs;
+      };
+
       const filtered = list.filter(n => {
         const type = (n.notificationType || '').toLowerCase();
         let payload = {};
         try { payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : (n.payload || {}); } catch { payload = n.payload || {}; }
         const role = (payload.role || payload.userRole || '').toString().toLowerCase();
-        return type === 'admin_registration' || (type === 'user_registered' && role === 'admin');
+        const typeContainsAdmin = type.includes('admin');
+        const typeUserRegistered = type.includes('registered') || type.includes('registration') || type.includes('user_created');
+        return isWithinWindow(n) && (role === 'admin' || typeContainsAdmin || (typeUserRegistered && role === 'admin'));
       });
       setAdminNotifications(filtered);
     } catch (err) {

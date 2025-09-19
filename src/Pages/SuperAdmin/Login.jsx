@@ -87,7 +87,9 @@ const LoginSup = () => {
           </div>
 
           {error && <p className="text-red-300 text-sm">{error}</p>}
-
+          <div className="flex justify-between items-center text-sm mt-1">
+            <a className="underline" href="/forgot-password">lupa password</a>
+          </div>
           <div className="flex">
             <button type="submit" className={className.button} disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}

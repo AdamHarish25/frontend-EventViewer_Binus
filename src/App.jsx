@@ -12,6 +12,9 @@ import RegisterUserPage from './Pages/Register';
 import RegisterAdminPage from './Pages/Admin/Register';
 import RegisterSuperAdminPage from './Pages/SuperAdmin/Register';
 import SuperAdminDashboard from './Pages/SuperAdmin/Dashboard';
+import ForgotPassword from './Pages/Auth/ForgotPassword';
+import VerifyOtp from './Pages/Auth/VerifyOtp';
+import ResetPassword from './Pages/Auth/ResetPassword';
 
 const UnauthorizedPage = () => (
     <div className='flex flex-col items-center justify-center h-screen bg-gray-100'>
@@ -38,6 +41,10 @@ function App() {
         <Route path="/login" element={<LoginUserPage />} />
         <Route path="/login/admin" element={<LoginAdminPage />} />
         <Route path="/login/superadmin" element={<LoginSuperAdminPage />} />
+
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><DashboardUser /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><AdminDashboard /></ProtectedRoute>} />
