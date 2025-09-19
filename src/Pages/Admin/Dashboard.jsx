@@ -10,7 +10,6 @@ import { createEvent, editEvent, deleteEvent, getEvents } from '../../services/e
 import apiClient from '../../services/api';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
   const [allEvents, setAllEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -95,6 +94,68 @@ const AdminDashboard = () => {
   const handleCloseModal = () => setModal({ type: null, data: null });
 
   const handleEditEvent = (event) => handleOpenModal('form', event);
+
+  // Klik notifikasi -> aksi berdasarkan status
+  const handleNotificationClick = (notif) => {
+    let payload = {};
+    try {
+      payload = typeof notif.payload === 'string' ? JSON.parse(notif.payload) : (notif.payload || {});
+    } catch {
+      payload = notif.payload || {};
+    }
+
+    // Cari eventId yang mungkin ada di payload
+    const candidateEventId = payload.eventId || payload.id || payload.event_id;
+    let eventToEdit = null;
+
+    if (candidateEventId) {
+      eventToEdit = allEvents.find(e => String(e.id) === String(candidateEventId)) || null;
+    }
+
+    // Jika tidak ketemu di daftar saat ini, coba rakit dari payload
+    if (!eventToEdit) {
+      const maybeEvent = payload.event || payload;
+      const hasEssential = maybeEvent && (maybeEvent.eventName || maybeEvent.location || maybeEvent.date);
+      if (hasEssential) {
+        eventToEdit = {
+          id: candidateEventId || maybeEvent.id,
+          eventName: maybeEvent.eventName || '',
+          location: maybeEvent.location || '',
+          date: maybeEvent.date || '',
+          startTime: maybeEvent.startTime || '',
+          endTime: maybeEvent.endTime || '',
+          speaker: maybeEvent.speaker || '',
+          imageUrl: maybeEvent.imageUrl || maybeEvent.image || undefined,
+        };
+      }
+    }
+
+    const status = (notif.notificationType && notif.notificationType.toLowerCase()) || '';
+
+    if (status === 'event_revision') {
+      // Revised: buka edit event
+      if (eventToEdit) {
+        handleOpenModal('form', eventToEdit);
+      } else {
+        handleOpenModal('status', { variant: 'danger', title: 'Tidak Ditemukan', message: 'Data event revisi tidak tersedia.' });
+      }
+    } else if (status === 'event_rejected') {
+      // Rejected: buka form event baru + tips
+      const tips = notif.feedback || payload.feedback || 'Event ditolak. Silakan perbaiki sesuai catatan yang diberikan.';
+      handleOpenModal('form', null);
+      setTimeout(() => setModal(prev => ({ ...prev, helperMessage: tips })), 0);
+    } else if (status === 'event_approved') {
+      // Approved: tampilkan modal info
+      handleOpenModal('status', { variant: 'success', title: 'Approved!', message: 'Event telah di-approved!' });
+    } else {
+      // Default: jika ada data event, buka edit, jika tidak info
+      if (eventToEdit) {
+        handleOpenModal('form', eventToEdit);
+      } else {
+        handleOpenModal('status', { variant: 'success', title: 'Notifikasi', message: 'Notifikasi diproses.' });
+      }
+    }
+  };
 
   const handleDeleteClick = (eventId) => {
     setActionToConfirm(() => async () => {
@@ -181,7 +242,7 @@ const AdminDashboard = () => {
           )}
         </div>
         <div className="lg:col-span-1">
-          <FeedbackPanel feedbackList={notifications} onFeedbackClick={(e) => console.log('Feedback clicked:', e)} />
+          <FeedbackPanel feedbackList={notifications} onFeedbackClick={handleNotificationClick} />
         </div>
       </main>
       <EventFormModal
@@ -189,6 +250,7 @@ const AdminDashboard = () => {
         onClose={handleCloseModal}
         eventToEdit={modal.data}
         onSave={handleSaveEvent}
+        helperMessage={modal.helperMessage}
       />
       <ConfirmationModal
         isOpen={modal.type === 'confirm-save'}

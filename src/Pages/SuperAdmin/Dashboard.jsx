@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import MainHeader from '../Component/MainHeader';
 import { StatusModal } from '../Component/StatusModal';
+import { ConfirmationModal } from '../Component/ConfirmationModal';
+import TextInputModal from '../Component/TextInputModal';
+import FeedbackPanel from '../Component/FeedbackPanel';
 import { approveEvent, rejectEvent, getEvents, sendFeedback } from '../../services/eventService';
 import apiClient from '../../services/api';
 
 const SuperAdminDashboard = () => {
   const [allEvents, setAllEvents] = useState([]);
-  const [admins, setAdmins] = useState([]);
+  // Notifikasi pendaftaran admin
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [adminNotifLoading, setAdminNotifLoading] = useState(false);
+  const [adminNotifError, setAdminNotifError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -30,20 +36,35 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  // PENTING: Endpoint `/users/admins` harus dibuat di backend agar ini berfungsi
-  const fetchAdmins = async () => {
+  // Ambil notifikasi pendaftaran admin dari endpoint notifikasi, lalu filter
+  const fetchAdminNotifications = async () => {
+    setAdminNotifLoading(true);
+    setAdminNotifError(null);
     try {
-      const res = await apiClient.get('/users/admins'); // Endpoint ini perlu dibuat
-      setAdmins((res.data.users || []).filter(u => u.role === 'admin'));
+      const res = await apiClient.get('/notification');
+      const list = res.data?.data || [];
+      const filtered = list.filter(n => {
+        const type = (n.notificationType || '').toLowerCase();
+        let payload = {};
+        try { payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : (n.payload || {}); } catch { payload = n.payload || {}; }
+        const role = (payload.role || payload.userRole || '').toString().toLowerCase();
+        return type === 'admin_registration' || (type === 'user_registered' && role === 'admin');
+      });
+      setAdminNotifications(filtered);
     } catch (err) {
-      console.error("Gagal mengambil data admin. Pastikan endpoint GET /users/admins sudah ada di backend.");
-      setAdmins([]);
+      console.error('Gagal mengambil notifikasi pendaftaran admin:', err);
+      setAdminNotifications([]);
+      setAdminNotifError('Gagal mengambil notifikasi pendaftaran admin.');
+    } finally {
+      setAdminNotifLoading(false);
     }
   };
 
   useEffect(() => {
     fetchEvents(currentPage);
-    fetchAdmins();
+    fetchAdminNotifications();
+    const interval = setInterval(fetchAdminNotifications, 10000);
+    return () => clearInterval(interval);
   }, [currentPage]);
 
   useEffect(() => {
@@ -74,43 +95,78 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const handleApprove = (eventId) => handleAction(
-    () => approveEvent(eventId),
-    'Event berhasil disetujui.',
-    'Gagal menyetujui event.'
-  );
-
-  const handleReject = (eventId) => {
-    const feedback = prompt('Harap berikan alasan penolakan:');
-    if (feedback) {
-      handleAction(
-        () => rejectEvent(eventId, feedback),
-        'Event berhasil ditolak.',
-        'Gagal menolak event.'
-      );
-    }
-  };
-  
-  const handleFeedback = (eventId) => {
-    const feedback = prompt('Harap berikan catatan untuk revisi:');
-    if (feedback) {
-      handleAction(
-        () => sendFeedback(eventId, feedback),
-        'Feedback revisi berhasil dikirim.',
-        'Gagal mengirim feedback.'
-      );
-    }
+  const handleApprove = (eventId, eventName) => {
+    setModal({
+      type: 'confirm',
+      data: {
+        title: 'Approve Event',
+        message: `Apakah Anda yakin ingin menyetujui event "${eventName || ''}"?`,
+        variant: 'success',
+        onConfirm: () => {
+          handleAction(
+            () => approveEvent(eventId),
+            'Event berhasil disetujui.',
+            'Gagal menyetujui event.'
+          );
+          setModal({ type: null, data: null });
+        }
+      }
+    });
   };
 
-  const handleHireAdmin = (adminData) => {
-    // Implementasi logika hire admin jika diperlukan
-    console.log("Hiring admin:", adminData);
-  }
+  const handleReject = (eventId, eventName) => {
+    setModal({
+      type: 'textinput',
+      data: {
+        title: 'Tolak Event',
+        label: 'Alasan Penolakan',
+        placeholder: 'Tuliskan alasan penolakan...',
+        onSubmit: (feedback) => {
+          handleAction(
+            () => rejectEvent(eventId, feedback),
+            'Event berhasil ditolak.',
+            'Gagal menolak event.'
+          );
+          setModal({ type: null, data: null });
+        }
+      }
+    });
+  };
   
-  const handleKickAdmin = (adminId) => {
-    // Implementasi logika kick admin jika diperlukan
-    console.log("Kicking admin:", adminId);
-  }
+  const handleFeedback = (eventId, eventName) => {
+    setModal({
+      type: 'textinput',
+      data: {
+        title: 'Kirim Feedback Revisi',
+        label: 'Catatan Revisi',
+        placeholder: 'Tuliskan catatan revisi untuk admin/event owner...',
+        onSubmit: (feedback) => {
+          handleAction(
+            () => sendFeedback(eventId, feedback),
+            'Feedback revisi berhasil dikirim.',
+            'Gagal mengirim feedback.'
+          );
+          setModal({ type: null, data: null });
+        }
+      }
+    });
+  };
+
+  // Klik notifikasi pendaftaran admin: tampilkan detail ringkas
+  const handleAdminNotifClick = (n) => {
+    let payload = {};
+    try { payload = typeof n.payload === 'string' ? JSON.parse(n.payload) : (n.payload || {}); } catch { payload = n.payload || {}; }
+    const name = [payload.firstName, payload.lastName].filter(Boolean).join(' ') || payload.name || 'Calon Admin';
+    const email = payload.email || '-';
+    setModal({
+      type: 'status',
+      data: {
+        variant: 'success',
+        title: 'Pendaftaran Admin Baru',
+        message: `Nama: ${name}\nEmail: ${email}`,
+      }
+    });
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -156,9 +212,9 @@ const SuperAdminDashboard = () => {
                   <td>{event.date}</td>
                   <td><span className={`px-2 py-1 rounded-full text-xs font-semibold ${event.status === 'approved' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{event.status}</span></td>
                   <td className="flex gap-2">
-                    <button onClick={() => handleApprove(event.id)} className="text-green-500 font-bold">Approve</button>
-                    <button onClick={() => handleReject(event.id)} className="text-red-500 font-bold">Reject</button>
-                    <button onClick={() => handleFeedback(event.id)} className="text-blue-500 font-bold">Revise</button>
+                    <button onClick={() => handleApprove(event.id, event.eventName)} className="text-green-500 font-bold">Approve</button>
+                    <button onClick={() => handleReject(event.id, event.eventName)} className="text-red-500 font-bold">Reject</button>
+                    <button onClick={() => handleFeedback(event.id, event.eventName)} className="text-blue-500 font-bold">Revise</button>
                   </td>
                 </tr>
               ))}
@@ -177,34 +233,14 @@ const SuperAdminDashboard = () => {
           )}
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Admin Management</h2>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Email</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {admins.map(admin => (
-                <tr key={admin.id}>
-                  <td>{admin.firstName} {admin.lastName}</td>
-                  <td>{admin.email}</td>
-                  <td>
-                    <button onClick={() => handleKickAdmin(admin.id)} className="bg-red-500 text-white px-2 py-1 rounded mr-2">Kick</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button
-            onClick={() => handleHireAdmin({ firstName: prompt('Nama depan?'), lastName: prompt('Nama belakang?'), email: prompt('Email?'), password: prompt('Password?'), confirmPassword: prompt('Konfirmasi Password?') })}
-            className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mt-4"
-          >
-            Hire Admin
-          </button>
+        <div className="p-6 rounded-lg">
+          {adminNotifLoading ? (
+            <p className="text-gray-500">Loading notifications...</p>
+          ) : adminNotifError ? (
+            <p className="text-red-500">{adminNotifError}</p>
+          ) : (
+            <FeedbackPanel feedbackList={adminNotifications} onFeedbackClick={handleAdminNotifClick} />
+          )}
         </div>
       </main>
       <StatusModal
@@ -213,6 +249,23 @@ const SuperAdminDashboard = () => {
         title={modal.data?.title}
         message={modal.data?.message}
         variant={modal.data?.variant}
+      />
+      <ConfirmationModal
+        isOpen={modal.type === 'confirm'}
+        onClose={() => setModal({ type: null, data: null })}
+        onConfirm={modal.data?.onConfirm}
+        title={modal.data?.title}
+        message={modal.data?.message}
+        variant={modal.data?.variant || 'default'}
+      />
+      <TextInputModal
+        isOpen={modal.type === 'textinput'}
+        onClose={() => setModal({ type: null, data: null })}
+        onSubmit={modal.data?.onSubmit}
+        title={modal.data?.title}
+        label={modal.data?.label}
+        placeholder={modal.data?.placeholder}
+        defaultValue={modal.data?.defaultValue}
       />
     </div>
   );

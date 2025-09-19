@@ -1,7 +1,7 @@
 // src/components/EventFormModal.jsx
 import React, { useState, useEffect } from 'react';
 
-const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
+const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit, helperMessage }) => {
   // State asli untuk data form (tetap utuh)
   const [formData, setFormData] = useState({
     eventName: '',
@@ -87,6 +87,11 @@ const EventFormModal = ({ isOpen, onClose, onSave, eventToEdit }) => {
         {/* Kolom Kiri: Form */}
         <div className="w-full lg:w-1/2 p-6">
           <h2 className="text-2xl font-bold text-gray-800">{isEditMode ? 'Edit Event' : 'New Event'}</h2>
+          {helperMessage && (
+            <div className="mt-3 rounded-md border-l-4 border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800">
+              {helperMessage}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {/* Input fields tetap sama */}
             <div>
