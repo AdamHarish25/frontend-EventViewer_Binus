@@ -15,12 +15,23 @@ const ForgotPassword = () => {
     setError('');
     setMessage('');
     setLoading(true);
+    
+    // Basic email validation
+    if (!email || !email.includes('@')) {
+      setError('Masukkan alamat email yang valid.');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      console.log('Attempting to send OTP for email:', email);
       const res = await authService.forgotPassword(email);
+      console.log('Forgot password response:', res);
       setMessage(res.message || 'Kode OTP telah dikirim ke email Anda.');
       // Lanjut ke halaman OTP dengan membawa email
       setTimeout(() => navigate(`/verify-otp?email=${encodeURIComponent(email)}`), 800);
     } catch (err) {
+      console.error('Forgot password error in component:', err);
       const msg = err?.message || err?.error || 'Gagal mengirim OTP.';
       setError(typeof msg === 'string' ? msg : 'Gagal mengirim OTP.');
     } finally {

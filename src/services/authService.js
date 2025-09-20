@@ -54,10 +54,27 @@ const logout = async () => {
  */
 const forgotPassword = async (email) => {
   try {
+    console.log('Sending forgot password request for email:', email);
     const response = await apiClient.post('/password/forgot-password', { email });
+    console.log('Forgot password response:', response.data);
     return response.data;
   } catch (error) {
-    throw error.response?.data || error;
+    console.error('Forgot password error:', error);
+    console.error('Error response:', error.response?.data);
+    console.error('Error status:', error.response?.status);
+    
+    // Handle different types of errors
+    if (error.response?.data) {
+      throw error.response.data;
+    } else if (error.response?.status === 404) {
+      throw { message: 'Email tidak ditemukan dalam database. Pastikan email sudah terdaftar.' };
+    } else if (error.response?.status === 500) {
+      throw { message: 'Server error. Silakan coba lagi nanti.' };
+    } else if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+      throw { message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.' };
+    } else {
+      throw { message: error.message || 'Gagal mengirim OTP. Silakan coba lagi.' };
+    }
   }
 };
 
@@ -67,10 +84,29 @@ const forgotPassword = async (email) => {
  */
 const verifyOtp = async (email, otp) => {
   try {
+    console.log('Verifying OTP for email:', email, 'OTP:', otp);
     const response = await apiClient.post('/password/verify-otp', { email, otp });
+    console.log('Verify OTP response:', response.data);
     return response.data; // Akan mengembalikan resetToken
   } catch (error) {
-    throw error.response?.data || error;
+    console.error('Verify OTP error:', error);
+    console.error('Error response:', error.response?.data);
+    console.error('Error status:', error.response?.status);
+    
+    // Handle different types of errors
+    if (error.response?.data) {
+      throw error.response.data;
+    } else if (error.response?.status === 400) {
+      throw { message: 'OTP tidak valid atau sudah expired. Silakan minta OTP baru.' };
+    } else if (error.response?.status === 404) {
+      throw { message: 'Email tidak ditemukan. Silakan coba lagi.' };
+    } else if (error.response?.status === 500) {
+      throw { message: 'Server error. Silakan coba lagi nanti.' };
+    } else if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+      throw { message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.' };
+    } else {
+      throw { message: error.message || 'Gagal memverifikasi OTP. Silakan coba lagi.' };
+    }
   }
 };
 
@@ -80,10 +116,29 @@ const verifyOtp = async (email, otp) => {
  */
 const resetPassword = async (email, password, resetToken) => {
   try {
+    console.log('Resetting password for email:', email, 'with token:', resetToken);
     const response = await apiClient.post('/password/reset-password', { email, password, resetToken });
+    console.log('Reset password response:', response.data);
     return response.data;
   } catch (error) {
-    throw error.response?.data || error;
+    console.error('Reset password error:', error);
+    console.error('Error response:', error.response?.data);
+    console.error('Error status:', error.response?.status);
+    
+    // Handle different types of errors
+    if (error.response?.data) {
+      throw error.response.data;
+    } else if (error.response?.status === 400) {
+      throw { message: 'Token tidak valid atau sudah expired. Silakan minta OTP baru.' };
+    } else if (error.response?.status === 404) {
+      throw { message: 'Email tidak ditemukan. Silakan coba lagi.' };
+    } else if (error.response?.status === 500) {
+      throw { message: 'Server error. Silakan coba lagi nanti.' };
+    } else if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+      throw { message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.' };
+    } else {
+      throw { message: error.message || 'Gagal reset password. Silakan coba lagi.' };
+    }
   }
 };
 

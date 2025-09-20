@@ -39,6 +39,7 @@ function App() {
         <Route path="/superadmin" element={<Navigate to="/login/superadmin" />} />
         
         <Route path="/login" element={<LoginUserPage />} />
+        <Route path="/" element={<LoginUserPage />} />
         <Route path="/login/admin" element={<LoginAdminPage />} />
         <Route path="/login/superadmin" element={<LoginSuperAdminPage />} />
 

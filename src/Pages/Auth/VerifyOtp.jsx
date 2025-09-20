@@ -27,13 +27,30 @@ const VerifyOtp = () => {
     setError('');
     setMessage('');
     setLoading(true);
+    
+    // Basic validation
+    if (!otp || otp.length < 4) {
+      setError('Masukkan kode OTP yang valid (minimal 4 digit).');
+      setLoading(false);
+      return;
+    }
+    
+    if (!email) {
+      setError('Email tidak ditemukan. Silakan kembali ke halaman sebelumnya.');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      console.log('Attempting to verify OTP for email:', email, 'OTP:', otp);
       const res = await authService.verifyOtp(email, otp);
+      console.log('Verify OTP response:', res);
       setMessage(res.message || 'OTP valid. Lanjutkan reset password.');
       // Arahkan ke halaman reset password dengan membawa token dari backend
       const resetToken = res.resetToken || res.token || '';
       setTimeout(() => navigate(`/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(resetToken)}`), 800);
     } catch (err) {
+      console.error('Verify OTP error in component:', err);
       const msg = err?.message || err?.error || 'OTP tidak valid.';
       setError(typeof msg === 'string' ? msg : 'OTP tidak valid.');
     } finally {
